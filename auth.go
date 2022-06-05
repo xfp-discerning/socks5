@@ -23,6 +23,8 @@ type ClientAuthMessage struct {
 	METHODS  []Methods
 }
 
+
+//服务器发消息的一个封装
 func NewSererAuthMessage(conn io.Writer, method Methods) error {
 	buf := []byte{SOCKS5Version, method}
 	_, err := conn.Write(buf)

@@ -8,7 +8,7 @@ import (
 
 func main() {
 	server := socks5.Socks5Sever{
-		IP: "localhost",
+		IP:   "localhost",
 		Port: 1080,
 	}
 

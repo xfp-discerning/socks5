@@ -57,3 +57,6 @@ func TestNewServerAuthMessage(t *testing.T) {
 		}
 	})
 }
+
+
+//note:测试时，全局不能报错
