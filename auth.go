@@ -5,13 +5,13 @@ import (
 	"io"
 )
 
-type METHODS = byte
+type Methods = byte
 
 const (
-	MethodNoAuth       METHODS = 0x00
-	MethodGSSAPI       METHODS = 0x01
-	MethodPassword     METHODS = 0x02
-	MethodNoAcceptable METHODS = 0xff
+	MethodNoAuth       Methods = 0x00
+	MethodGSSAPI       Methods = 0x01
+	MethodPassword     Methods = 0x02
+	MethodNoAcceptable Methods = 0xff
 )
 
 //客户端向socks代理服务器发送报文，
@@ -20,7 +20,17 @@ const (
 type ClientAuthMessage struct {
 	Version  byte
 	NMETHODS byte
-	METHODS  []METHODS
+	METHODS  []Methods
+}
+
+func NewSererAuthMessage(conn io.Writer, method Methods) error {
+	buf := []byte{SOCKS5Version, method}
+	_, err := conn.Write(buf)
+	// if err != nil {
+	// 	return err
+	// }
+	// return nil
+	return err
 }
 
 //func NewClientAuthMEssage(conn net.conn) (*ClientAuthMessage, error)

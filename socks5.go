@@ -68,11 +68,12 @@ func auth(conn net.Conn) error {
 
 	// log.Println(clientmessage.Version,clientmessage.NMETHODS,clientmessage.METHODS)
 
-	//only suppot no-auth
 	//伪代码
-	// if 	!clientmessage.METHODS.contains(no-auth){
+	// if !clientmessage.METHODS.contains(no-auth){
 	// 	return noacceptable
 	// }
+
+	//only suppot no-auth
 	var accept bool
 	for _, methods := range clientmessage.METHODS {
 		if methods == MethodNoAuth {
