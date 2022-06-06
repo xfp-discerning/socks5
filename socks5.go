@@ -67,12 +67,13 @@ func handleconnection(conn net.Conn) error {
 	}
 
 	//请求过程
-	if _,err := request(conn); err != nil{
+	targetConn, err := request(conn)
+	if err != nil {
 		return err
 	}
 
 	//转发过程
-	return nil
+	return forward(conn, targetConn)
 
 }
 
@@ -122,15 +123,36 @@ func auth(conn net.Conn) error {
 func request(conn io.ReadWriter) (io.ReadWriteCloser, error) {
 	message, err := NewClientRquestMessage(conn)
 	if err != nil {
-		return nil ,err
+		return nil, err
 	}
 	//check if the comandis supported
 	if message.Cmd != CmdConnect {
 		//在REP中返回command不支持命令
+		return nil, WriteRequestFailureMessage(conn, ReplyCommandNotSupported)
 	}
 
-	if message.Atyp != TypeIPV4{
+	if message.Atyp != TypeIPV4 {
 		//返回地址类型不支持
-	} 
-	return nil, nil 	
+		return nil, WriteRequestFailureMessage(conn, ReplyAddressTypeNotSupported)
+	}
+
+	//请求访问远程目标tcp服务
+	//message.Address:port
+	address := fmt.Sprintf("%s:%d", message.Address, message.Port)
+	targetConn, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, WriteRequestFailureMessage(conn, ReplyConnectionRefused)
+	}
+
+	//send successful connection
+	addrValue := targetConn.LocalAddr()
+	addr := addrValue.(*net.TCPAddr) //类型断言
+	return targetConn, WriteRequestSuccessMessage(conn, addr.IP, uint16(addr.Port))
+}
+
+func forward(conn io.ReadWriter, targetconn io.ReadWriteCloser) error {
+	defer targetconn.Close()
+	go io.Copy(conn, targetconn)
+	_, err := io.Copy(targetconn, conn)
+	return err
 }

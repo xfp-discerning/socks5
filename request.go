@@ -10,7 +10,7 @@ type ClientRquestMessage struct {
 	Cmd     Command
 	Address string
 	Port    uint16
-	Atyp  AddressType
+	Atyp    AddressType
 	//不重要信息可以做省略
 }
 
@@ -56,7 +56,7 @@ func NewClientRquestMessage(conn io.Reader) (*ClientRquestMessage, error) {
 	}
 
 	message := ClientRquestMessage{
-		Cmd: comand,
+		Cmd:  comand,
 		Atyp: atyp,
 	}
 
@@ -82,20 +82,20 @@ func NewClientRquestMessage(conn io.Reader) (*ClientRquestMessage, error) {
 		if _, err := io.ReadFull(conn, buf[:domainlength]); err != nil {
 			return nil, err
 		}
-		message.Address = string(buf[:domainlength])   //和视频代码有歧义
+		message.Address = string(buf[:domainlength]) //和视频代码有歧义
 	}
 
 	//read port
 	if _, err := io.ReadFull(conn, buf[:PortLength]); err != nil {
 		return nil, err
 	}
-	message.Port = uint16(buf[0])<<8 + uint16(buf[1])//左移8位
+	message.Port = uint16(buf[0])<<8 + uint16(buf[1]) //左移8位
 	return &message, nil
 }
 
 type RplyType = byte
 
-const(
+const (
 	ReplySuccess RplyType = iota
 	ReplyServerFailure
 	ReplyConnectionNotAllowed
@@ -107,7 +107,32 @@ const(
 	ReplyAddressTypeNotSupported
 )
 
-func WriteRequestSuccessMessage(conn io.Writer) error {
+//处理rep返回success的函数
+func WriteRequestSuccessMessage(conn io.Writer, ip net.IP, port uint16) error {
 	// conn.Write([]byte)
+	addrtype := TypeIPV4
+	if len(ip) == IPV6Length {
+		addrtype = TypeIPV6
+	}
+	if _, err := conn.Write([]byte{SOCKS5Version, ReplySuccess, Reservedfield, addrtype}); err != nil {
+		return nil
+	}
+	if _, err := conn.Write(ip); err != nil {
+		return nil
+	}
+	//大端写入
+	buf := make([]byte, 2)
+	//这里和视频有歧义
+	buf[0] = byte(port >> 8)
+	buf[1] = byte(port - (uint16(buf[0]) << 8))
+	if _, err := conn.Write(buf); err != nil {
+		return nil
+	}
 	return nil
+}
+
+//处理rep返回错误的函数
+func WriteRequestFailureMessage(conn io.Writer, reply RplyType) error {
+	_, err := conn.Write([]byte{SOCKS5Version, reply, Reservedfield, TypeIPV4, 0, 0, 0, 0, 0, 0})
+	return err
 }
