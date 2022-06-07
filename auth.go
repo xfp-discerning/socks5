@@ -96,7 +96,12 @@ func NewClientPasswordMessage(conn io.Reader) (*ClientPasswordMessage, error) {
 	if _, err = io.ReadFull(conn, buf); err != nil {
 		return nil, err
 	}
-	username, passwordlen := buf[:len(buf)-1], buf[len(buf)-1]
+	username, passwordlen := string(buf[:len(buf)-1]), buf[len(buf)-1]
+
+	//test报错？？？
+	// username, passwordlen := buf[:len(buf)-1], buf[len(buf)-1]
+
+
 	if len(buf) < int(passwordlen) {
 		buf = make([]byte, passwordlen)
 	}
@@ -104,9 +109,16 @@ func NewClientPasswordMessage(conn io.Reader) (*ClientPasswordMessage, error) {
 		return nil, err
 	}
 	pword := buf[:int(passwordlen)]
-	
+
 	return &ClientPasswordMessage{
-		name:     string(username),
+		name:     username,
 		password: string(pword),
 	}, nil
+
+	//test报错？？？此时username==12345
+	// return &ClientPasswordMessage{
+	// 	name:     username,
+	// 	password: string(pword),
+	// }, nil
+
 }

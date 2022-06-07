@@ -64,16 +64,16 @@ func TestNewClientPasswordMessage(t *testing.T) {
 		username, password := "admin", "123456"
 		var buf bytes.Buffer
 		buf.Write([]byte{PasswordAuthVersion, 5})
-		buf.WriteString("username")
+		buf.WriteString(username)
 		buf.WriteByte(6)
-		buf.WriteString("password")
+		buf.WriteString(password)
 		cpm, err := NewClientPasswordMessage(&buf)
 		if err != nil {
 			log.Fatalf("want err = nil, but got err :%s\n", err)
 		}
 		want := ClientPasswordMessage{
 			name:     username,
-			password: password,
+			password: password,	
 		}
 		if *cpm != want {
 			t.Fatalf("want :%v, but got %v\n", want, *cpm)
