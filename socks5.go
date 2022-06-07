@@ -10,10 +10,11 @@ import (
 
 //请求过程的定义错误
 var (
-	VesionError = errors.New("socks version not supported")
-	CmdError    = errors.New("request command not supported")
-	RevError    = errors.New("reserved not supported")
-	AddrError   = errors.New("address not supported")
+	VesionError              = errors.New("socks version not supported")
+	CmdError                 = errors.New("request command not supported")
+	RevError                 = errors.New("reserved not supported")
+	AddrError                = errors.New("address not supported")
+	PasswordAuthVersionError = errors.New("password auth version supported")
 )
 
 //socks5的版本号为0x05

@@ -2,6 +2,7 @@ package socks5
 
 import (
 	"bytes"
+	"log"
 	"reflect"
 	"testing"
 )
@@ -58,5 +59,26 @@ func TestNewServerAuthMessage(t *testing.T) {
 	})
 }
 
+func TestNewClientPasswordMessage(t *testing.T) {
+	t.Run("valid password auth message", func(t *testing.T) {
+		username, password := "admin", "123456"
+		var buf bytes.Buffer
+		buf.Write([]byte{PasswordAuthVersion, 5})
+		buf.WriteString("username")
+		buf.WriteByte(6)
+		buf.WriteString("password")
+		cpm, err := NewClientPasswordMessage(&buf)
+		if err != nil {
+			log.Fatalf("want err = nil, but got err :%s\n", err)
+		}
+		want := ClientPasswordMessage{
+			name:     username,
+			password: password,
+		}
+		if *cpm != want {
+			t.Fatalf("want :%v, but got %v\n", want, *cpm)
+		}
+	})
+}
 
 //note:测试时，全局不能报错

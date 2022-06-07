@@ -14,6 +14,8 @@ const (
 	MethodNoAcceptable Methods = 0xff
 )
 
+const PasswordAuthVersion = 0x01
+
 //客户端向socks代理服务器发送报文，
 //有三个字段，VER，NMETHODS（方法数量），METHODS
 //用来提供认证方法
@@ -23,6 +25,10 @@ type ClientAuthMessage struct {
 	METHODS  []Methods
 }
 
+type ClientPasswordMessage struct {
+	name     string
+	password string
+}
 
 //服务器发消息的一个封装
 func NewSererAuthMessage(conn io.Writer, method Methods) error {
@@ -69,5 +75,38 @@ func NewClientAuthMEssage(conn io.Reader) (*ClientAuthMessage, error) {
 		Version:  SOCKS5Version,
 		NMETHODS: nmethods,
 		METHODS:  buf,
+	}, nil
+}
+
+//密码认证，收到客户端的报文，格式：ver(1)、ulen(1)、uname(1-255)、plen(1)、password(1-255)
+func NewClientPasswordMessage(conn io.Reader) (*ClientPasswordMessage, error) {
+	//read version and uernamelenth
+	buf := make([]byte, 2)
+	_, err := io.ReadFull(conn, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	version, usernamelen := buf[0], buf[1]
+	if version != PasswordAuthVersion {
+		return nil, PasswordAuthVersionError
+	}
+	//read name
+	buf = make([]byte, usernamelen+1)
+	if _, err = io.ReadFull(conn, buf); err != nil {
+		return nil, err
+	}
+	username, passwordlen := buf[:len(buf)-1], buf[len(buf)-1]
+	if len(buf) < int(passwordlen) {
+		buf = make([]byte, passwordlen)
+	}
+	if _, err = io.ReadFull(conn, buf); err != nil {
+		return nil, err
+	}
+	pword := buf[:int(passwordlen)]
+	
+	return &ClientPasswordMessage{
+		name:     string(username),
+		password: string(pword),
 	}, nil
 }
