@@ -15,6 +15,7 @@ var (
 	RevError                 = errors.New("reserved not supported")
 	AddrError                = errors.New("address not supported")
 	PasswordAuthVersionError = errors.New("password auth version supported")
+	PasswordAthufailureError = errors.New("athu fail uername/password")
 )
 
 //socks5的版本号为0x05
@@ -30,12 +31,30 @@ type Server interface {
 
 //实现Server
 type Socks5Sever struct {
-	IP   string
-	Port int
+	IP     string
+	Port   int
+	Config *Config
+}
+
+//Config的默认配置
+func initConfig(config *Config) error {
+	if config.AuthMethod == MethodPassword && config.PasswordChecker == nil {
+		return errors.New("error checker not set")
+	}
+	return nil
+}
+
+type Config struct {
+	AuthMethod      Methods
+	PasswordChecker func(username, password string) bool
 }
 
 //Server是用来处理客户端发来消息的循环
 func (s *Socks5Sever) Run() error {
+	//init
+	if err := initConfig(s.Config); err != nil {
+		return err
+	}
 	address := fmt.Sprintf("%s:%d", s.IP, s.Port)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
@@ -51,7 +70,7 @@ func (s *Socks5Sever) Run() error {
 		//开协程,包上函数，可以做错误处理
 		go func() {
 			defer conn.Close() //使用defer保证资源的回收
-			err := handleconnection(conn)
+			err := handleconnection(conn, s.Config)
 			if err != nil {
 				log.Println("handle connection failed ,err:", err)
 			}
@@ -61,9 +80,9 @@ func (s *Socks5Sever) Run() error {
 }
 
 //处理连接上的请求
-func handleconnection(conn net.Conn) error {
+func handleconnection(conn net.Conn, config *Config) error {
 	//协商过程
-	if err := auth(conn); err != nil {
+	if err := auth(conn, config); err != nil {
 		return err
 	}
 
@@ -81,7 +100,7 @@ func handleconnection(conn net.Conn) error {
 //协商过程
 //报文格式 收: ver|nmethods|methods
 //报文格式 发: ver|methods
-func auth(conn net.Conn) error {
+func auth(conn net.Conn, config *Config) error {
 	clientmessage, err := NewClientAuthMEssage(conn)
 	if err != nil {
 		return err
@@ -95,25 +114,48 @@ func auth(conn net.Conn) error {
 	// }
 
 	//only suppot no-auth
+	// var acceptable bool
+	// for _, methods := range clientmessage.METHODS {
+	// 	if methods == MethodNoAuth {
+	// 		acceptable = true
+	// 	}
+	// }
+	// if !acceptable {
+	// 	NewSererAuthMessage(conn, MethodNoAcceptable)
+	// 	return errors.New("method not supported")
+	// }
+	// return NewSererAuthMessage(conn, MethodNoAuth)
+
+	//check if the auth method is supported
 	var acceptable bool
 	for _, methods := range clientmessage.METHODS {
 		if methods == MethodNoAuth {
 			acceptable = true
 		}
 	}
-
-	// if !acceptable {
-	// 	NewSererAuthMessage(conn,MethodNoAcceptable)
-	// 	return errors.New("method not supported")
-	// }else{
-	// 	NewSererAuthMessage(conn,MethodNoAuth)
-	// }
-	//精简代码
 	if !acceptable {
 		NewSererAuthMessage(conn, MethodNoAcceptable)
 		return errors.New("method not supported")
 	}
-	return NewSererAuthMessage(conn, MethodNoAuth)
+	if err := NewSererAuthMessage(conn, config.AuthMethod); err != nil {
+		return err
+	}
+	if config.AuthMethod == MethodPassword {
+		cpm, err2 := NewClientPasswordMessage(conn)
+		if err2 != nil {
+			return err2
+		}
+		if !config.PasswordChecker(cpm.name, cpm.password) {
+			//认证失败
+			//认证失败后，conn会断开，可以忽略这一错误
+			WriteServerPasswordMessage(conn, Passauthfail)
+			return PasswordAthufailureError
+		}
+		if err := WriteServerPasswordMessage(conn, Passauthsuccess); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 //请求过程

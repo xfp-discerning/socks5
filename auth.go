@@ -14,7 +14,12 @@ const (
 	MethodNoAcceptable Methods = 0xff
 )
 
-const PasswordAuthVersion = 0x01
+const (	
+	PasswordAuthVersion = 0x01
+	//密码验证，服务器返回的status
+	Passauthsuccess = 0x00
+	Passauthfail = 0x01//任意非零都表错误
+)
 
 //客户端向socks代理服务器发送报文，
 //有三个字段，VER，NMETHODS（方法数量），METHODS
@@ -101,7 +106,6 @@ func NewClientPasswordMessage(conn io.Reader) (*ClientPasswordMessage, error) {
 	//test报错？？？
 	// username, passwordlen := buf[:len(buf)-1], buf[len(buf)-1]
 
-
 	if len(buf) < int(passwordlen) {
 		buf = make([]byte, passwordlen)
 	}
@@ -121,4 +125,11 @@ func NewClientPasswordMessage(conn io.Reader) (*ClientPasswordMessage, error) {
 	// 	password: string(pword),
 	// }, nil
 
+}
+
+//代理服务器在密码验证阶段返回报文
+//格式为ver、status
+func WriteServerPasswordMessage(conn io.Writer, status byte) error {
+	_, err := conn.Write([]byte{PasswordAuthVersion, status})
+	return err
 }
